@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>动态二维码</title>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    
+    <style>
+        /* 基础样式 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: #f9fafb;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        
+        .container {
+            max-width: 28rem;
+            width: 100%;
+            background-color: white;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            font-size: clamp(1.5rem, 3vw, 2rem);
+            font-weight: 700;
+            text-align: center;
+            color: #1f2937;
+            margin-bottom: 1.5rem;
+        }
+        
+        .text-primary {
+            color: #3B82F6;
+        }
+        
+        .time-info {
+            background-color: #f3f4f6;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .time-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        
+        .time-row:last-child {
+            margin-bottom: 0;
+        }
+        
+        .text-neutral {
+            color: #6B7280;
+        }
+        
+        .font-medium {
+            font-weight: 500;
+        }
+        
+        .text-gray-800 {
+            color: #1f2937;
+        }
+        
+        .qr-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        
+        .qr-code {
+            width: 16rem;
+            height: 16rem;
+            margin-bottom: 1rem;
+            background-color: white;
+            padding: 0.5rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+        
+        .countdown-bar-container {
+            width: 100%;
+            background-color: #f3f4f6;
+            border-radius: 9999px;
+            height: 0.625rem;
+            margin-bottom: 0.5rem;
+            overflow: hidden;
+        }
+        
+        .countdown-bar {
+            background-color: #10B981;
+            height: 100%;
+            border-radius: 9999px;
+            transition: width 1s ease-in-out;
+        }
+        
+        .countdown-display {
+            text-align: center;
+        }
+        
+        .text-sm {
+            font-size: 0.875rem;
+        }
+        
+        .font-semibold {
+            font-weight: 600;
+        }
+        
+        .text-xl {
+            font-size: 1.25rem;
+        }
+        
+        .footer-text {
+            margin-top: 1.5rem;
+            text-align: center;
+            font-size: 0.875rem;
+            color: #6B7280;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>
+            <i class="fa fa-qrcode text-primary mr-2"></i>动态二维码
+        </h1>
+        
+        <!-- 时间信息展示区域 -->
+        <div class="time-info">
+            <div class="time-row">
+                <span class="text-neutral">当前时间：</span>
+                <span id="current-time" class="font-medium text-gray-800"></span>
+            </div>
+            <div class="time-row">
+                <span class="text-neutral">二维码生成时间：</span>
+                <span id="publish-date" class="font-medium text-gray-800"></span>
+            </div>
+        </div>
+        
+        <!-- 二维码展示区域 -->
+        <div class="qr-container">
+            <div id="qr-code-container" class="qr-code">
+                <!-- 二维码将在这里生成 -->
+            </div>
+            
+            <!-- 倒计时进度条 -->
+            <div class="countdown-bar-container">
+                <div id="countdown-bar" class="countdown-bar"></div>
+            </div>
+            
+            <!-- 倒计时显示 -->
+            <div class="countdown-display">
+                <p class="text-neutral text-sm mb-1">下次刷新倒计时：</p>
+                <p id="countdown-display" class="text-primary font-semibold text-xl">60</p>
+            </div>
+        </div>
+        
+        <div class="footer-text">
+            <p>每60秒自动刷新一次二维码</p>
+        </div>
+    </div>
+
+    <script>
+        // 获取当前UTC+8时间
+        function getCurrentUTC8Time() {
+            const now = new Date();
+            // 转换为UTC时间
+            const utc = new Date(now.getTime() + now.getTimezoneOffset() * 60000);
+            // 添加8小时得到UTC+8
+            const utc8 = new Date(utc.getTime() + 8 * 3600000);
+            
+            // 格式化时间为"YYYY-MM-DD HH:MM:SS"
+            return utc8.toISOString().slice(0, 10) + ' ' + utc8.toTimeString().slice(0, 8);
+        }
+        
+        // 更新当前时间显示（每秒更新）
+        function updateCurrentTime() {
+            document.getElementById('current-time').textContent = getCurrentUTC8Time();
+        }
+        
+        // 创建要生成二维码的JSON数据
+        function createQrCodeData() {
+            const publishDate = getCurrentUTC8Time();
+            // 更新页面上的二维码生成时间
+            document.getElementById('publish-date').textContent = publishDate;
+            
+            return {
+                "compId": "0",
+                "code": "60091",
+                "name": "虹桥天地三店",
+                "publishDate": publishDate,
+                "type": "30",
+                "parentId": "0",
+                "second": 60,  // 改为60秒
+                "id": "1610116754483157530",
+                "src": "10"
+            };
+        }
+        
+        // 生成二维码
+        function generateQrCode() {
+            const data = createQrCodeData();
+            const dataString = JSON.stringify(data);
+            
+            // 生成二维码
+            const qrContainer = document.getElementById('qr-code-container');
+            qrContainer.innerHTML = ''; // 清空之前的二维码
+            
+            QRCode.toCanvas(dataString, {
+                width: 256,
+                margin: 1,
+                color: {
+                    dark: '#3B82F6',
+                    light: '#ffffff'
+                }
+            }, function (error, canvas) {
+                if (error) console.error(error);
+                qrContainer.appendChild(canvas);
+            });
+        }
+        
+        // 倒计时功能
+        function startCountdown() {
+            let seconds = 60;  // 改为60秒
+            const countdownDisplay = document.getElementById('countdown-display');
+            const countdownBar = document.getElementById('countdown-bar');
+            
+            // 初始化进度条
+            countdownBar.style.width = '100%';
+            
+            const countdownInterval = setInterval(() => {
+                seconds--;
+                countdownDisplay.textContent = seconds;
+                countdownBar.style.width = `${(seconds / 60) * 100}%`;  // 改为60秒
+                
+                if (seconds <= 0) {
+                    clearInterval(countdownInterval);
+                    generateQrCode(); // 刷新二维码
+                    startCountdown(); // 重新开始倒计时
+                }
+            }, 1000);
+        }
+        
+        // 初始化
+        window.onload = function() {
+            // 生成初始二维码
+            generateQrCode();
+            // 启动倒计时
+            startCountdown();
+            // 立即更新当前时间
+            updateCurrentTime();
+            // 每秒更新一次当前时间
+            setInterval(updateCurrentTime, 1000);
+        };
+    </script>
+</body>
+</html>
+    
